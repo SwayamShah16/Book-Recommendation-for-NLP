@@ -9,7 +9,7 @@ sys.path.insert(0, str(ROOT))
 from src.preprocessing import tokenize, filter_tokens, validate_script, stopword_stem_lemma, morphology
 from src.experiment_tools import build_ngram_model, predict_next_word, generate_text, compare_texts
 
-st.set_page_config(page_title='BookWise — Read your next favorite', page_icon='📚', layout='wide', initial_sidebar_state='expanded')
+st.set_page_config(page_title='BookWise — Read your next favorite', page_icon='📚', layout='wide', initial_sidebar_state='expanded', menu_items={})
 
 BOOKS = [
  {'id':1,'title':'The Midnight Library','author':'Matt Haig','genre':'Fantasy','year':2020,'rating':4.4,'pages':304,'description':'Between life and death there is a library, and within that library, the shelves go on forever. Every book offers a chance to try another life you could have lived.','tagline':'One library. Infinite lives.','color':'#5267A8','emoji':'🌙'},
@@ -49,19 +49,19 @@ DF = pd.DataFrame(BOOKS)
 
 st.markdown('''<style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
-:root{--ink:#202523;--muted:#777f79;--paper:#f7f6f2;--green:#1d4c3e;--lime:#d9ef84;--line:#e8e6df}
-html,body,[class*="css"]{font-family:'DM Sans',sans-serif;color:var(--ink)} .stApp{background:var(--paper)}
+:root{--ink:var(--text-color,#202523);--muted:color-mix(in srgb,var(--text-color,#202523) 62%,transparent);--paper:var(--background-color,#f7f6f2);--panel:var(--secondary-background-color,#fff);--green:var(--primary-color,#1d4c3e);--lime:#d9ef84;--line:color-mix(in srgb,var(--text-color,#202523) 14%,transparent)}
+html,body,[class*="css"]{font-family:'DM Sans',sans-serif;color:var(--text-color,#202523)} .stApp{background:var(--background-color,#f7f6f2);color:var(--text-color,#202523)}
 .block-container{padding-top:1.7rem;padding-bottom:3rem;max-width:1440px}
-[data-testid="stSidebar"]{background:#f0efe8;border-right:1px solid #e2e0d7}
+[data-testid="stSidebar"]{background:var(--secondary-background-color,#f0efe8);border-right:1px solid var(--line)}
 [data-testid="stSidebar"] h1{font-family:'Playfair Display',serif;color:var(--green)}
 .hero{background:#1d4c3e;color:#fff;border-radius:24px;padding:34px 38px;position:relative;overflow:hidden;margin-bottom:22px}
 .hero:after{content:'✳';position:absolute;right:38px;top:-52px;font-size:220px;color:#d9ef84;opacity:.13}
 .eyebrow{letter-spacing:2.4px;text-transform:uppercase;font-size:11px;font-weight:700;color:#d9ef84}
 .hero h1{font-family:'Playfair Display',serif;font-size:42px;line-height:1.1;margin:12px 0;color:#fff}
 .hero p{color:#dce8df;max-width:560px;font-size:15px;line-height:1.7}
-.metric{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 20px}
+.metric{background:var(--secondary-background-color,#fff);border:1px solid var(--line);border-radius:16px;padding:18px 20px}
 .metric .num{font-size:27px;font-weight:700;color:var(--green)}.metric .lbl{font-size:12px;color:var(--muted);margin-top:2px}
-.book-card{background:#fff;border:1px solid var(--line);border-radius:17px;padding:14px;height:100%;box-shadow:0 4px 16px #26332c08}
+.book-card{background:var(--secondary-background-color,#fff);border:1px solid var(--line);border-radius:17px;padding:14px;height:100%;box-shadow:0 4px 16px #26332c08}
 .cover{height:190px;border-radius:10px;display:flex;flex-direction:column;justify-content:space-between;padding:16px;color:white;box-shadow:inset 0 0 0 1px #ffffff22;}
 .cover .emoji{font-size:30px}.cover .title{font-family:'Playfair Display',serif;font-size:22px;line-height:1.08;font-weight:600}.cover .author{font-size:10px;letter-spacing:1px;text-transform:uppercase;opacity:.85}
 .book-title{font-family:'Playfair Display',serif;font-size:18px;font-weight:600;margin-top:12px}.muted{color:var(--muted);font-size:12px}.pill{display:inline-block;background:#edf3e8;color:#315745;border-radius:100px;padding:4px 9px;font-size:11px;font-weight:600}
@@ -72,11 +72,13 @@ div[data-testid="stExpander"]{background:#fff;border-radius:12px;border:1px soli
 
 /* BookWise visual refresh: editorial, calm, and responsive */
 .block-container{padding-top:1.25rem;max-width:1480px}
-[data-testid="stSidebar"]{background:linear-gradient(180deg,#f0efe8 0%,#f7f6f2 100%);padding-top:1.4rem}
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1{font-size:2.25rem;letter-spacing:-1.2px}
+[data-testid="stSidebar"]{background:var(--secondary-background-color,#f0efe8);padding-top:.8rem}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1{font-size:1.65rem;letter-spacing:-.7px;margin-bottom:.25rem}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,[data-testid="stSidebar"] [data-testid="stCaptionContainer"]{font-size:.78rem;line-height:1.35}
+[data-testid="stSidebar"] [role="radiogroup"] label p{font-size:.86rem;line-height:1.2}
 [data-testid="stSidebar"] [role="radiogroup"]{gap:7px}
-[data-testid="stSidebar"] [role="radiogroup"] label{padding:9px 12px;border-radius:12px;transition:background .18s ease}
-[data-testid="stSidebar"] [role="radiogroup"] label:hover{background:#e3e8dc}
+[data-testid="stSidebar"] [role="radiogroup"] label{padding:5px 8px;border-radius:10px;transition:background .18s ease}
+[data-testid="stSidebar"] [role="radiogroup"] label:hover{background:color-mix(in srgb,var(--primary-color,#1d4c3e) 10%,transparent)}
 .hero{padding:42px 42px;border-radius:26px;box-shadow:0 16px 38px #173e3010;background:radial-gradient(circle at 88% 8%,#477761 0%,#1d4c3e 38%,#173b31 100%)}
 .hero h1{font-size:clamp(34px,4vw,52px);letter-spacing:-1.3px;max-width:740px}
 .hero p{font-size:15px;max-width:610px}
@@ -92,23 +94,31 @@ div[data-testid="stExpander"]{background:#fff;border-radius:12px;border:1px soli
 div.stButton>button{transition:all .16s ease;border-radius:12px}
 div.stButton>button:hover{border-color:#1d4c3e;color:#1d4c3e;transform:translateY(-1px)}
 div.stButton>button[kind="primary"]:hover{background:#28624f;color:#fff}
-.stTabs [data-baseweb="tab-list"]{background:#eeede6;padding:5px;border-radius:14px;flex-wrap:wrap}
+.stTabs [data-baseweb="tab-list"]{background:var(--secondary-background-color,#eeede6);padding:5px;border-radius:14px;flex-wrap:wrap}
 .stTabs [data-baseweb="tab"]{border-radius:10px;padding:9px 12px}
-.stTabs [aria-selected="true"]{background:#fff!important;box-shadow:0 2px 8px #1d4c3e0d}
+.stTabs [aria-selected="true"]{background:var(--background-color,#fff)!important;box-shadow:0 2px 8px #1d4c3e0d}
 div[data-testid="stExpander"],div[data-testid="stAlert"]{border-radius:14px}
-[data-testid="stMetric"]{background:#fff;border:1px solid var(--line);padding:12px 14px;border-radius:14px}
+[data-testid="stMetric"]{background:var(--secondary-background-color,#fff);border:1px solid var(--line);padding:12px 14px;border-radius:14px}
 @media(max-width:760px){.block-container{padding-left:1rem;padding-right:1rem}.hero{padding:28px 23px}.hero h1{font-size:34px}.cover{height:165px!important}.cover .title{font-size:19px}}
 
 
 
-/* Fixed sidebar width on desktop; it remains collapsible on small screens for usability. */
-@media (min-width: 761px) {
-  [data-testid="stSidebar"] { width: 272px !important; min-width: 272px !important; max-width: 272px !important; flex: 0 0 272px !important; }
-  [data-testid="stSidebar"] > div:first-child { width: 272px !important; min-width: 272px !important; }
-  [data-testid="stSidebarResizer"], [data-testid="stSidebarResizeHandle"] { display:none !important; width:0 !important; }
-}
-[data-testid="stSidebar"] { overflow-x:hidden; }
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] { overflow-wrap:anywhere; }
+/* Stable light theme, fixed navigation, and no Streamlit mode/deploy controls. */
+:root { color-scheme: light; --ink:#202523; --muted:#68736c; --paper:#f7f6f2; --panel:#ffffff; --green:#1d4c3e; --line:#dfe3dc; }
+html, body, .stApp, [data-testid="stAppViewContainer"] { background:#f7f6f2!important; color:#202523!important; }
+[data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], #MainMenu, footer { display:none!important; visibility:hidden!important; height:0!important; }
+[data-testid="stSidebarCollapseButton"], [data-testid="collapsedControl"], button[kind="headerNoPadding"] { display:none!important; visibility:hidden!important; }
+[data-testid="stSidebar"] { width:252px!important; min-width:252px!important; max-width:252px!important; flex:0 0 252px!important; background:#eeefe8!important; border-right:1px solid #dfe3dc; overflow-x:hidden; }
+[data-testid="stSidebar"] > div:first-child { width:252px!important; min-width:252px!important; }
+[data-testid="stSidebarResizer"], [data-testid="stSidebarResizeHandle"] { display:none!important; width:0!important; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"], [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:#202523!important; overflow-wrap:anywhere; }
+[data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
+[data-testid="stCaptionContainer"], .stText, label, [data-testid="stWidgetLabel"] p { color:#202523; }
+.muted,.small-label,.metric .lbl { color:#68736c!important; }
+.book-title,.section-title { color:#202523!important; }
+[data-testid="stExpander"] { background:#ffffff!important; }
+.stTextInput input, .stTextArea textarea { color:#202523!important; background:#fff!important; }
+[data-baseweb="select"] > div { background:#fff!important; color:#202523!important; }
 /* Responsive content and cards */
 .block-container { width:100%; min-width:0; }
 [data-testid="stImage"] img { display:block; width:100%; height:auto; aspect-ratio: 2 / 3; object-fit:cover; border-radius:12px; }
@@ -119,7 +129,8 @@ div[data-testid="stExpander"],div[data-testid="stAlert"]{border-radius:14px}
   .section-title { font-size:25px; }
 }
 @media (max-width: 760px) {
-  [data-testid="stSidebar"] { width:min(84vw, 300px) !important; min-width:0 !important; max-width:min(84vw, 300px) !important; }
+  [data-testid="stSidebar"] { width:220px!important; min-width:220px!important; max-width:220px!important; flex:0 0 220px!important; }
+  [data-testid="stSidebar"] > div:first-child { width:220px!important; min-width:220px!important; }
   .block-container { padding-left:0.8rem; padding-right:0.8rem; padding-top:0.8rem; }
   .hero { padding:25px 20px; border-radius:18px; }
   .hero h1 { font-size:clamp(29px,8vw,38px); }
