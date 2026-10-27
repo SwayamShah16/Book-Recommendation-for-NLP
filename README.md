@@ -11,6 +11,7 @@ BookWise is a Python and Streamlit web application for discovering books, receiv
 - **Reading Tracker:** track Want to Read / Currently Reading / Finished status, page progress, personal ratings, notes, yearly goal, and export a reading log.
 - **Explore Insights:** view catalogue statistics, genre counts, rating distribution, reading lengths, and top-rated titles.
 - **Similarity Matcher:** compare two catalogue descriptions or your own text.
+- **Book Insights:** open insights from every book card; see whole-book keyword and chapter statistics for the complete Project Gutenberg text of *Pride and Prejudice*, and synopsis-based insights for other titles.
 - **Text Insights:** ten interactive tools for keyword cleaning, word refinement, word forms, next-word ideas, sentence roles, key phrases, names and places, text comparison, and popular words.
 - **Data export:** download the full book catalogue and personal lists as CSV files.
 - **30 curated demo titles** across multiple genres. The app does not require an API key or internet access for core recommendations.
@@ -42,6 +43,8 @@ BookWise is a Python and Streamlit web application for discovering books, receiv
 - `assets/ui_design_preview.png` — interface concept preview
 - `assets/covers/` — 30 locally bundled book-cover illustrations that load offline
 - `assets/cover_links.csv` — Open Library search links and cover URL reference
+- `data/full_texts/pride_and_prejudice.txt` — complete Project Gutenberg eBook text used for book-specific analysis
+- `data/full_texts/README.md` — source and attribution details
 - `assets/IMAGE_SOURCES.md` — image asset notes and cover API guidance
 
 ## Technology
