@@ -46,9 +46,27 @@ BOOKS.extend([
  {'id':30,'title':'The Thursday Murder Club','author':'Richard Osman','genre':'Mystery','year':2020,'rating':4.1,'pages':368,'description':'Four retirement-village friends who meet to discuss cold cases find themselves investigating a real murder close to home.','tagline':'An unlikely team. A very real mystery.','color':'#6D8C78','emoji':'🔎'},
 ])
 DF = pd.DataFrame(BOOKS)
+FULL_TEXT_BOOKS = {8: ROOT / 'data' / 'full_texts' / 'pride_and_prejudice.txt'}
+
+
+@st.cache_data(show_spinner=False)
+def load_full_book_text(book_id):
+    """Load the novel body from a bundled public-domain Project Gutenberg file."""
+    path = FULL_TEXT_BOOKS.get(int(book_id))
+    if not path or not path.exists():
+        return ''
+    raw = path.read_text(encoding='utf-8', errors='replace')
+    start = re.search(r'(?im)^[ \t]*Chapter I\.\][ \t]*$', raw)
+    if not start:
+        start = re.search(r'\*\*\* START OF THE PROJECT GUTENBERG EBOOK[^\n]*\*\*\*', raw, re.I)
+    end = re.search(r'\*\*\* END OF THE PROJECT GUTENBERG EBOOK', raw, re.I)
+    body_start = start.start() if start else 0
+    body_end = end.start() if end and end.start() > body_start else len(raw)
+    return raw[body_start:body_end].strip()
+
 
 st.markdown('''<style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
+
 :root{--ink:var(--text-color,#202523);--muted:color-mix(in srgb,var(--text-color,#202523) 62%,transparent);--paper:var(--background-color,#f7f6f2);--panel:var(--secondary-background-color,#fff);--green:var(--primary-color,#1d4c3e);--lime:#d9ef84;--line:color-mix(in srgb,var(--text-color,#202523) 14%,transparent)}
 html,body,[class*="css"]{font-family:'DM Sans',sans-serif;color:var(--text-color,#202523)} .stApp{background:var(--background-color,#f7f6f2);color:var(--text-color,#202523)}
 .block-container{padding-top:1.7rem;padding-bottom:3rem;max-width:1440px}
@@ -103,13 +121,14 @@ div[data-testid="stExpander"],div[data-testid="stAlert"]{border-radius:14px}
 
 
 
-/* Stable light theme, fixed navigation, and no Streamlit mode/deploy controls. */
+/* Stable light theme, visible sidebar controls, and no Streamlit deploy decorations. */
 :root { color-scheme: light; --ink:#202523; --muted:#68736c; --paper:#f7f6f2; --panel:#ffffff; --green:#1d4c3e; --line:#dfe3dc; }
 html, body, .stApp, [data-testid="stAppViewContainer"] { background:#f7f6f2!important; color:#202523!important; }
-[data-testid="stHeader"], [data-testid="stToolbar"], [data-testid="stDecoration"], #MainMenu, footer { display:none!important; visibility:hidden!important; height:0!important; }
-[data-testid="stSidebarCollapseButton"], [data-testid="collapsedControl"], button[kind="headerNoPadding"] { display:none!important; visibility:hidden!important; }
-[data-testid="stSidebar"] { width:252px!important; min-width:252px!important; max-width:252px!important; flex:0 0 252px!important; background:#eeefe8!important; border-right:1px solid #dfe3dc; overflow-x:hidden; }
-[data-testid="stSidebar"] > div:first-child { width:252px!important; min-width:252px!important; }
+/* Keep Streamlit header available so the sidebar toggle remains visible. Hide only deploy/menu decorations. */
+[data-testid="stDecoration"], #MainMenu, footer { display:none!important; visibility:hidden!important; height:0!important; }
+/* Sidebar collapse/expand controls intentionally remain visible and usable. */
+[data-testid="stSidebar"] { background:#eeefe8!important; border-right:1px solid #dfe3dc; overflow-x:hidden; }
+
 [data-testid="stSidebarResizer"], [data-testid="stSidebarResizeHandle"] { display:none!important; width:0!important; }
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"], [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:#202523!important; overflow-wrap:anywhere; }
 [data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
@@ -122,6 +141,11 @@ html, body, .stApp, [data-testid="stAppViewContainer"] { background:#f7f6f2!impo
 /* Responsive content and cards */
 .block-container { width:100%; min-width:0; }
 [data-testid="stImage"] img { display:block; width:100%; height:auto; aspect-ratio: 2 / 3; object-fit:cover; border-radius:12px; }
+/* Avoid artificial blank card blocks above covers; style image and nearby book content directly. */
+[data-testid="stImage"] { margin-top:0!important; padding-top:0!important; }
+[data-testid="stImage"] > img { margin-top:0!important; }
+[data-testid="stVerticalBlock"] > [data-testid="stElementContainer"]:has([data-testid="stImage"]) { margin-top:0!important; }
+
 .book-card { min-width:0; }
 @media (max-width: 1050px) {
   .block-container { padding-left:1.2rem; padding-right:1.2rem; }
@@ -129,8 +153,8 @@ html, body, .stApp, [data-testid="stAppViewContainer"] { background:#f7f6f2!impo
   .section-title { font-size:25px; }
 }
 @media (max-width: 760px) {
-  [data-testid="stSidebar"] { width:220px!important; min-width:220px!important; max-width:220px!important; flex:0 0 220px!important; }
-  [data-testid="stSidebar"] > div:first-child { width:220px!important; min-width:220px!important; }
+  
+  
   .block-container { padding-left:0.8rem; padding-right:0.8rem; padding-top:0.8rem; }
   .hero { padding:25px 20px; border-radius:18px; }
   .hero h1 { font-size:clamp(29px,8vw,38px); }
@@ -148,9 +172,42 @@ html, body, .stApp, [data-testid="stAppViewContainer"] { background:#f7f6f2!impo
   div.stButton > button { padding-left:0.5rem; padding-right:0.5rem; font-size:0.85rem; }
 }
 
+/* BookWise professional polish: offline-safe typography, responsive layout, and accessible states. */
+:root{--ink:#202523;--muted:#68736c;--paper:#f7f6f2;--green:#1d4c3e;--green-soft:#e8efe9;--line:#dfe3dc;--serif:Georgia,'Times New Roman',serif;--sans:'Aptos','Segoe UI',sans-serif}
+html,body,.stApp,[data-testid="stAppViewContainer"]{background:var(--paper)!important;color:var(--ink)!important;font-family:var(--sans)}
+.block-container{width:100%;max-width:1440px;padding:1.35rem 2rem 3rem;min-width:0}
+[data-testid="stSidebar"]{background:#eeefe8!important;border-right:1px solid var(--line);overflow-x:hidden}
+[data-testid="stSidebar"] h1{font-family:var(--serif);color:var(--green);font-size:1.7rem;letter-spacing:-.04em}
+[data-testid="stSidebar"] [role="radiogroup"]{gap:5px}
+[data-testid="stSidebar"] [role="radiogroup"] label{padding:6px 9px;border-radius:10px;transition:background .16s ease}
+[data-testid="stSidebar"] [role="radiogroup"] label:hover{background:#dfe8df}
+.hero{padding:40px 42px;border-radius:24px;background:radial-gradient(circle at 88% 8%,#477761 0%,#1d4c3e 38%,#173b31 100%);box-shadow:0 14px 34px #173e3012}
+.hero h1{max-width:740px;font-family:var(--serif);font-size:clamp(34px,4vw,52px);letter-spacing:-1.2px}
+.hero p{max-width:610px;color:#e2ebe4;line-height:1.7}
+.section-title,.book-title{font-family:var(--serif);color:var(--ink)!important;letter-spacing:-.35px}
+.section-title{margin:22px 0 4px;font-size:28px}.book-title{font-size:18px;font-weight:700}
+.muted,.small-label,.metric .lbl{color:var(--muted)!important}.muted{font-size:12px;line-height:1.5}
+.pill{background:var(--green-soft);color:#315745;border-radius:999px;font-weight:650}
+.metric{min-height:92px;padding:17px 18px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 5px 18px #26332c06;transition:transform .18s ease,box-shadow .18s ease}
+.metric:hover{transform:translateY(-2px);box-shadow:0 10px 24px #26332c0d}
+.cover{border-radius:13px;box-shadow:inset 0 0 0 1px #ffffff22,0 8px 16px #16241d14}.cover .title{font-family:var(--serif);font-weight:700}
+[data-testid="stImage"] img{display:block;width:100%;height:auto;aspect-ratio:2/3;object-fit:cover;border-radius:12px}
+.stTextInput input,.stTextArea textarea,[data-baseweb="select"]>div{border-radius:11px!important;background:#fff!important;color:var(--ink)!important}
+.stTextInput input:focus,.stTextArea textarea:focus{border-color:#477761!important;box-shadow:0 0 0 2px #47776122!important}
+div.stButton>button{min-height:2.55rem;border:1px solid #d9ddd6;border-radius:11px;font-weight:650;transition:transform .16s ease,background .16s ease,border-color .16s ease}
+div.stButton>button:hover{transform:translateY(-1px);border-color:var(--green);color:var(--green)}
+div.stButton>button[kind="primary"]{border-color:var(--green);background:var(--green);color:#fff}
+div.stButton>button[kind="primary"]:hover{background:#28624f;color:#fff}div.stButton>button:focus-visible{outline:3px solid #95b6a2;outline-offset:2px}
+[data-testid="stMetric"],div[data-testid="stExpander"],div[data-testid="stAlert"]{border-radius:14px}
+.stTabs [data-baseweb="tab-list"]{gap:5px;flex-wrap:wrap;padding:5px;border-radius:13px;background:#eeede6}.stTabs [data-baseweb="tab"]{padding:8px 11px;border-radius:9px}
+.stTabs [aria-selected="true"]{background:#fff!important;box-shadow:0 2px 8px #1d4c3e0d}div[data-testid="stExpander"]{border:1px solid var(--line);background:#fff}
+@media(max-width:1050px){.block-container{padding-left:1.2rem;padding-right:1.2rem}.hero{padding:32px 28px}.section-title{font-size:25px}}
+@media(max-width:760px){.block-container{padding:.9rem .85rem 2.5rem}.hero{padding:27px 21px;border-radius:19px}.hero h1{font-size:clamp(30px,8vw,39px)}.hero p{font-size:14px}.metric{min-height:78px;padding:12px}.metric .num{font-size:22px}.cover{height:165px!important}.cover .title{font-size:19px}.book-title{font-size:16px}[data-testid="stHorizontalBlock"]{gap:.65rem}}
+@media(max-width:480px){.cover{height:150px!important}.cover .title{font-size:17px}.section-title{font-size:23px}div.stButton>button{padding-right:.5rem;padding-left:.5rem;font-size:.85rem}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
 </style>''', unsafe_allow_html=True)
 
-PAGES = ['Discover','Recommendations','My Shelf','Reading Tracker','Explore Insights','Text Insights','Similarity Matcher','About BookWise']
+PAGES = ['Discover','Recommendations','My Shelf','Reading Tracker','Explore Insights','Book Insights','Text Insights','Similarity Matcher','About BookWise']
 if 'page' not in st.session_state or st.session_state.page not in PAGES: st.session_state.page = 'Discover'
 if 'shelf' not in st.session_state: st.session_state.shelf = []
 if 'liked' not in st.session_state: st.session_state.liked = []
@@ -165,14 +222,14 @@ with st.sidebar:
     st.markdown('# BookWise')
     st.caption('YOUR NEXT CHAPTER STARTS HERE')
     st.divider()
-    page = st.radio('YOUR READING SPACE', PAGES, index=PAGES.index(st.session_state.page), label_visibility='visible', format_func=lambda x: {'Discover':'⌂  Discover','Recommendations':'✦  For You','My Shelf':'▤  My Shelf','Reading Tracker':'◷  Reading Tracker','Explore Insights':'◈  Explore Insights','Text Insights':'⌘  Text Insights','Similarity Matcher':'⇄  Similarity Matcher','About BookWise':'ⓘ  About BookWise'}[x])
+    page = st.radio('YOUR READING SPACE', PAGES, index=PAGES.index(st.session_state.page), label_visibility='visible', format_func=lambda x: {'Discover':'⌂  Discover','Recommendations':'✦  For You','My Shelf':'▤  My Shelf','Reading Tracker':'◷  Reading Tracker','Explore Insights':'◈  Explore Insights','Book Insights':'▧  Book Insights','Text Insights':'⌘  Text Insights','Similarity Matcher':'⇄  Similarity Matcher','About BookWise':'ⓘ  About BookWise'}[x])
     st.session_state.page = page
     st.divider()
     st.markdown('**Your reading space**')
     st.caption(f'♡  {len(st.session_state.shelf)} saved books')
     st.caption(f'◷  {sum(1 for v in st.session_state.reading_status.values() if v == "Finished")} finished books')
     st.caption('Smart matching · TF-IDF · similarity scoring')
-    st.markdown('<div style="height:12px"></div><div style="font-size:11px;color:#788078">SEMESTER PROJECT EDITION<br>v1.0 · OFFLINE DEMO DATA</div>', unsafe_allow_html=True)
+    st.markdown('<div style="height:12px"></div><div style="font-size:11px;color:#788078">PERSONAL READING COMPANION<br>OFFLINE DEMO CATALOGUE</div>', unsafe_allow_html=True)
 
 
 def book_cover(book, height=190):
@@ -216,23 +273,112 @@ def render_book_grid(frame, prefix='discover'):
     for idx, (_, row) in enumerate(frame.iterrows()):
         b = row.to_dict(); bid=int(b['id'])
         with cols[idx % 3]:
-            st.markdown('<div class="book-card">', unsafe_allow_html=True)
             book_cover(b)
             st.markdown(f'<div class="book-title">{b["title"]}</div><div class="muted">{b["author"]} · {int(b["year"])}</div><div style="margin-top:9px"><span class="pill">{b["genre"]}</span> &nbsp; <span style="font-size:12px;color:#9b7730">★ {b["rating"]}</span></div><p style="font-size:12px;line-height:1.55;color:#626a64;min-height:55px">{b["description"][:112]}…</p>', unsafe_allow_html=True)
             if 'match' in b and float(b.get('match',0)) > 0:
                 st.caption(f'✳ {round(float(b["match"])*100)}% text match')
-            c1,c2=st.columns(2)
+            c1,c2,c3=st.columns(3)
             with c1:
                 if st.button('＋ Save', key=f'{prefix}_save_{bid}', use_container_width=True):
                     add_book(bid); st.toast('Added to My Shelf')
             with c2:
                 if st.button('Details', key=f'{prefix}_details_{bid}', use_container_width=True):
                     st.session_state[f'detail_{prefix}'] = bid
-            st.markdown('</div>', unsafe_allow_html=True)
+            with c3:
+                if st.button('Insights', key=f'{prefix}_insights_{bid}', use_container_width=True):
+                    st.session_state.insights_book_id = bid
+                    st.session_state.book_insights_title = b['title']
+                    st.session_state.page = 'Book Insights'
+                    st.rerun()
             if st.session_state.get(f'detail_{prefix}') == bid:
                 with st.expander(f'About {b["title"]}', expanded=True):
                     st.write(b['description']); st.caption(f'{b["pages"]} pages · Published {b["year"]} · Rated {b["rating"]}/5')
                     st.write('**Why it may fit:** ' + (f"Your search overlaps with this book's description (text match {float(b.get('match',0)):.2f})." if 'match' in b else 'Explore its genre, themes, and description.'))
+
+def render_text_insight_tools(text_input, book_title=None):
+    tabs=st.tabs(['Overview','Clean keywords','Refine words','Word forms','Next-word ideas','Sentence roles','Key phrases','Names & places','Compare text','Popular words'])
+    with tabs[0]:
+        if book_title:
+            st.subheader(f'Text profile · {book_title}')
+            st.write('The tools below analyze the selected text. Whole-book totals above use the full bundled novel when available.')
+            st.write('**Techniques:** Tokenization · TF-IDF · cosine similarity · word frequency analysis')
+        else:
+            st.subheader('How BookWise understands your search')
+            st.write('**Problem:** Readers face difficulty finding books matching their interests across large catalogs.')
+            st.write('**Approach:** Text categorization, text similarity, information retrieval, and preprocessing.')
+            st.write('**Techniques:** Tokenization · TF-IDF · cosine similarity · word frequency analysis')
+            st.success('BookWise helps readers discover stories that fit their interests.')
+    with tabs[1]:
+        st.subheader('Tokenization, filtration & script validation')
+        tokens=tokenize(text_input); filtered=filter_tokens(tokens); valid=validate_script(text_input)
+        a,b,c=st.columns(3)
+        a.metric('Tokens',len(tokens)); b.metric('Filtered tokens',len(filtered)); c.metric('Scripts detected',len(valid['scripts_found']))
+        st.write('**Tokens**'); st.code(' · '.join(tokens) or '(empty)'); st.write('**Filtered tokens**'); st.code(' · '.join(filtered) or '(empty)'); st.json(valid)
+    with tabs[2]:
+        st.subheader('Stop-word removal, stemming & lemmatization')
+        result=stopword_stem_lemma(text_input)
+        for label,key in [('Original tokens','tokens'),('Without stop words','without_stopwords'),('Stemmed words','stemmed'),('Lemmatized words','lemmatized')]:
+            st.markdown('**'+label+'**'); st.code(' · '.join(result[key]) or '(empty)')
+        st.caption('Stemming and lemmatization are lightweight educational approximations, not a full linguistic model.')
+    with tabs[3]:
+        st.subheader('Morphological analysis & word generation')
+        result=morphology(text_input)
+        if result['analysis']: st.dataframe(pd.DataFrame(result['analysis']),use_container_width=True,hide_index=True)
+        else: st.info('Enter some alphabetic words to analyze morphology.')
+    with tabs[4]:
+        st.subheader('N-gram model, next-word prediction & generation')
+        n=st.select_slider('N-gram size',options=[2,3,4],value=2); context=st.text_input('Context / seed phrase','a curious young')
+        model=build_ngram_model(text_input,n); prediction=predict_next_word(model,context); generated=generate_text(model,context or text_input.split()[0] if text_input.split() else '',8)
+        st.metric('N-gram contexts',len(model)); st.write('**Next word prediction**'); st.info(prediction or 'No matching context found in this input.'); st.write('**Generated continuation**'); st.code(generated or 'Add more text to build a model.')
+        st.caption('This is a small corpus-based demo; results depend on the text supplied.')
+    with tabs[5]:
+        st.subheader('Part-of-speech tagging')
+        try:
+            import nltk
+            toks=nltk.word_tokenize(text_input); tags=nltk.pos_tag(toks)
+            st.dataframe(pd.DataFrame(tags,columns=['Token','POS tag']),use_container_width=True,hide_index=True)
+        except Exception:
+            words=re.findall(r"\b[\w']+\b|[^\w\s]",text_input)
+            st.dataframe(pd.DataFrame([(w,'NN (fallback)') for w in words],columns=['Token','POS tag']),use_container_width=True,hide_index=True)
+            st.warning('NLTK tagger resources are unavailable in this environment, so a clearly labelled fallback is shown. Optional resource download instructions are in README.md.')
+    with tabs[6]:
+        st.subheader('Chunking with a simple NP / PP / VP grammar')
+        try:
+            import nltk
+            tagged=nltk.pos_tag(nltk.word_tokenize(text_input)); grammar=r'NP: {<DT>?<JJ.*>*<NN.*>+}\nPP: {<IN><NP>}\nVP: {<VB.*><NP|PP>*}'
+            tree=nltk.RegexpParser(grammar).parse(tagged)
+            chunks=[]
+            for subtree in tree.subtrees():
+                if subtree.label() in ['NP','VP','PP']: chunks.append({'type':subtree.label(),'phrase':' '.join(w for w,t in subtree.leaves())})
+            if chunks: st.dataframe(pd.DataFrame(chunks),use_container_width=True,hide_index=True)
+            else: st.info('No chunks identified by the simple grammar.')
+            st.code(str(tree))
+        except Exception: st.warning('Chunking requires NLTK tokenizer and POS-tagger resources. Try the POS tag experiment or install resources as documented in README.md.')
+    with tabs[7]:
+        st.subheader('Named entity recognition')
+        try:
+            import nltk
+            tagged=nltk.pos_tag(nltk.word_tokenize(text_input)); tree=nltk.ne_chunk(tagged)
+            entities=[]
+            for node in tree:
+                if hasattr(node,'label'): entities.append({'entity':' '.join(w for w,t in node.leaves()),'label':node.label()})
+            if entities: st.dataframe(pd.DataFrame(entities),use_container_width=True,hide_index=True)
+            else: st.info('No named entities identified in this text.')
+        except Exception: st.warning('NER requires optional NLTK tokenizer, POS-tagger and named-entity resources. Install resources as documented in README.md.')
+    with tabs[8]:
+        st.subheader('TF-IDF text similarity recognizer')
+        other=st.text_area('Compare with another description',value='A young investigator searches for clues in a secret archive and uncovers a mystery about courage and friendship.',height=100)
+        score,level=compare_texts(text_input,other); st.metric('Cosine similarity',f'{score*100:.1f}%'); st.progress(min(max(score,0),1)); st.write(f'**Similarity level:** {level}')
+        st.caption('TF-IDF highlights overlapping informative terms; similarity is not a measure of literary quality.')
+    with tabs[9]:
+        st.subheader('Text exploratory analysis & word frequencies')
+        cleaned=re.sub(r'[^a-zA-Z\s]','',str(text_input).lower()); stop={'a','an','the','and','or','is','are','of','to','in','for','on','with','it','this','that'}
+        freq=Counter(w for w in cleaned.split() if w not in stop)
+        if freq:
+            freq_df=pd.DataFrame(freq.most_common(15),columns=['Word','Frequency'])
+            st.bar_chart(freq_df.set_index('Word')); st.dataframe(freq_df,use_container_width=True,hide_index=True)
+        else: st.info('Enter a longer text to see word frequencies.')
+        st.caption('The chart is a frequency view; it is not a generated word-cloud image.')
 
 if page == 'Discover':
     st.markdown('''<div class="hero"><div class="eyebrow">✳ A little more you, in every book</div><h1>Find the story<br>that finds you.</h1><p>Discover books that match your mood, interests, and curiosity. Describe what you love, and find your next memorable read.</p></div>''', unsafe_allow_html=True)
@@ -346,96 +492,72 @@ elif page == 'My Shelf':
         for i,(_,r) in enumerate(selected.iterrows()):
             b=r.to_dict(); bid=int(b['id'])
             with cols[i%3]:
-                st.markdown('<div class="book-card">',unsafe_allow_html=True); book_cover(b,170)
+                book_cover(b,170)
                 st.markdown(f'<div class="book-title">{b["title"]}</div><div class="muted">{b["author"]}</div><p style="font-size:12px">{b["description"]}</p>',unsafe_allow_html=True)
-                if st.button('Remove from shelf',key=f'remove_{bid}',use_container_width=True):
-                    st.session_state.shelf.remove(bid); st.rerun()
-                st.markdown('</div>',unsafe_allow_html=True)
+                remove_col,insight_col=st.columns(2)
+                with remove_col:
+                    if st.button('Remove from shelf',key=f'remove_{bid}',use_container_width=True):
+                        st.session_state.shelf.remove(bid); st.rerun()
+                with insight_col:
+                    if st.button('Insights',key=f'shelf_insights_{bid}',use_container_width=True):
+                        st.session_state.insights_book_id = bid
+                        st.session_state.book_insights_title = b['title']
+                        st.session_state.page = 'Book Insights'
+                        st.rerun()
         csv=selected[['title','author','genre','year','rating']].to_csv(index=False).encode('utf-8')
         st.download_button('↓ Export my shelf (CSV)',csv,'my_bookwise_shelf.csv','text/csv')
 
+elif page == 'Book Insights':
+    st.markdown('<div class="section-title">Book-by-book text insights</div><div class="muted">Choose a title to explore its language. A complete text from Project Gutenberg is bundled for Pride and Prejudice; other titles use their catalogue synopsis.</div>', unsafe_allow_html=True)
+    titles=DF.title.tolist()
+    default_book_id=int(st.session_state.get('insights_book_id', 8))
+    default_row=DF[DF.id==default_book_id]
+    default_title=str(default_row.iloc[0].title) if not default_row.empty else titles[0]
+    if 'book_insights_title' not in st.session_state:
+        st.session_state.book_insights_title=default_title
+    selected_title=st.selectbox('Choose a book',titles,key='book_insights_title')
+    book=DF[DF.title==selected_title].iloc[0].to_dict()
+    bid=int(book['id'])
+    st.session_state.insights_book_id=bid
+    full_text=load_full_book_text(bid)
+    analysis_source=full_text if full_text else str(book['description'])
+    if full_text:
+        words=re.findall(r"[A-Za-z]+(?:['’][A-Za-z]+)?",analysis_source.lower())
+        stopwords=set('all am an and are as at be been before being but by can could did do does for from had has have he her hers herself him himself his how i if in into is it its just may me might more most must my no nor not of off on once only or other our ours out over own said same she should so some such than that the their them then there these they this those through to too up us very was we were what when where which while who whom why will with would you your mr mrs miss ms sir madam one much little every'.split())
+        keywords=[word for word in filter_tokens(words) if word not in stopwords]
+        chapters=len(re.findall(r'(?im)^[ \t]*Chapter\s+[IVXLCDM]+\.\]?[ \t]*$',analysis_source))
+        metric_cols=st.columns(4)
+        metric_cols[0].metric('Words in full text',f'{len(words):,}')
+        metric_cols[1].metric('Distinct terms',f'{len(set(keywords)):,}')
+        metric_cols[2].metric('Chapters',f'{chapters:,}')
+        metric_cols[3].metric('Text source','Full book')
+        st.markdown('#### Most-used keywords')
+        frequent=Counter(keywords).most_common(15)
+        if frequent:
+            frequency_frame=pd.DataFrame(frequent,columns=['Word','Frequency'])
+            chart_col,table_col=st.columns([1.3,1])
+            with chart_col: st.bar_chart(frequency_frame.set_index('Word'))
+            with table_col: st.dataframe(frequency_frame,use_container_width=True,hide_index=True)
+        next_chapter=re.search(r'(?im)^[ \t]*Chapter II\.\]?[ \t]*$',analysis_source)
+        excerpt=analysis_source[:next_chapter.start()] if next_chapter else analysis_source[:4500]
+        st.caption('Whole-book totals and frequent terms use the complete novel. The interactive classroom tools below start with Chapter I so their detailed tables stay responsive; you can edit the sample text.')
+        st.markdown('[Full text source: Project Gutenberg, eBook 1342](https://www.gutenberg.org/ebooks/1342)')
+    else:
+        excerpt=analysis_source
+        words=re.findall(r"[A-Za-z]+(?:['’][A-Za-z]+)?",analysis_source.lower())
+        metric_cols=st.columns(3)
+        metric_cols[0].metric('Words in synopsis',f'{len(words):,}')
+        metric_cols[1].metric('Distinct terms',f'{len(set(filter_tokens(words))):,}')
+        metric_cols[2].metric('Text source','Catalogue synopsis')
+        st.info('This title has no complete text bundled. Insights use the short catalogue synopsis. Add a text you own or are licensed to use, then register its path in FULL_TEXT_BOOKS in app.py to enable full-book analysis.')
+    st.subheader(f"Explore {book['title']}")
+    analysis_excerpt=st.text_area('Text used by the interactive tools',value=excerpt,height=180,key=f'book_lab_text_{bid}',help='For the bundled full-text title, whole-book statistics above use the complete novel; detailed classroom tools use this editable excerpt.')
+    render_text_insight_tools(analysis_excerpt, book_title=book['title'])
 elif page == 'Text Insights':
     st.markdown('<div class="section-title">Reading Insights</div><div class="muted">Explore the ten reading insights tools integrated into the BookWise project. Use any text or a sample book description.</div>',unsafe_allow_html=True)
     sample='A curious young detective discovers a hidden library filled with mysterious stories and ancient secrets. She follows clues through the city and learns that courage, friendship, and knowledge can change the world.'
     text_input=st.text_area('Input text',value=sample,height=110,help='This text is used by the text-processing experiments below.')
-    tabs=st.tabs(['Overview','Clean keywords','Refine words','Word forms','Next-word ideas','Sentence roles','Key phrases','Names & places','Compare text','Popular words'])
-    with tabs[0]:
-        st.subheader('How BookWise understands your search')
-        st.write('**Problem:** Readers face difficulty finding books matching their interests across large catalogs.')
-        st.write('**Approach:** Text categorization, text similarity, information retrieval, and preprocessing.')
-        st.write('**Techniques:** Tokenization · TF-IDF · cosine similarity · word frequency analysis')
-        st.success('BookWise helps readers discover stories that fit their interests.')
-    with tabs[1]:
-        st.subheader('Tokenization, filtration & script validation')
-        tokens=tokenize(text_input); filtered=filter_tokens(tokens); valid=validate_script(text_input)
-        a,b,c=st.columns(3)
-        a.metric('Tokens',len(tokens)); b.metric('Filtered tokens',len(filtered)); c.metric('Scripts detected',len(valid['scripts_found']))
-        st.write('**Tokens**'); st.code(' · '.join(tokens) or '(empty)'); st.write('**Filtered tokens**'); st.code(' · '.join(filtered) or '(empty)'); st.json(valid)
-    with tabs[2]:
-        st.subheader('Stop-word removal, stemming & lemmatization')
-        result=stopword_stem_lemma(text_input)
-        for label,key in [('Original tokens','tokens'),('Without stop words','without_stopwords'),('Stemmed words','stemmed'),('Lemmatized words','lemmatized')]:
-            st.markdown('**'+label+'**'); st.code(' · '.join(result[key]) or '(empty)')
-        st.caption('Stemming and lemmatization are lightweight educational approximations, not a full linguistic model.')
-    with tabs[3]:
-        st.subheader('Morphological analysis & word generation')
-        result=morphology(text_input)
-        if result['analysis']: st.dataframe(pd.DataFrame(result['analysis']),use_container_width=True,hide_index=True)
-        else: st.info('Enter some alphabetic words to analyze morphology.')
-    with tabs[4]:
-        st.subheader('N-gram model, next-word prediction & generation')
-        n=st.select_slider('N-gram size',options=[2,3,4],value=2); context=st.text_input('Context / seed phrase','a curious young')
-        model=build_ngram_model(text_input,n); prediction=predict_next_word(model,context); generated=generate_text(model,context or text_input.split()[0] if text_input.split() else '',8)
-        st.metric('N-gram contexts',len(model)); st.write('**Next word prediction**'); st.info(prediction or 'No matching context found in this input.'); st.write('**Generated continuation**'); st.code(generated or 'Add more text to build a model.')
-        st.caption('This is a small corpus-based demo; results depend on the text supplied.')
-    with tabs[5]:
-        st.subheader('Part-of-speech tagging')
-        try:
-            import nltk
-            toks=nltk.word_tokenize(text_input); tags=nltk.pos_tag(toks)
-            st.dataframe(pd.DataFrame(tags,columns=['Token','POS tag']),use_container_width=True,hide_index=True)
-        except Exception:
-            words=re.findall(r"\b[\w']+\b|[^\w\s]",text_input)
-            st.dataframe(pd.DataFrame([(w,'NN (fallback)') for w in words],columns=['Token','POS tag']),use_container_width=True,hide_index=True)
-            st.warning('NLTK tagger resources are unavailable in this environment, so a clearly labelled fallback is shown. Optional resource download instructions are in README.md.')
-    with tabs[6]:
-        st.subheader('Chunking with a simple NP / PP / VP grammar')
-        try:
-            import nltk
-            tagged=nltk.pos_tag(nltk.word_tokenize(text_input)); grammar=r'NP: {<DT>?<JJ.*>*<NN.*>+}\nPP: {<IN><NP>}\nVP: {<VB.*><NP|PP>*}'
-            tree=nltk.RegexpParser(grammar).parse(tagged)
-            chunks=[]
-            for subtree in tree.subtrees():
-                if subtree.label() in ['NP','VP','PP']: chunks.append({'type':subtree.label(),'phrase':' '.join(w for w,t in subtree.leaves())})
-            if chunks: st.dataframe(pd.DataFrame(chunks),use_container_width=True,hide_index=True)
-            else: st.info('No chunks identified by the simple grammar.')
-            st.code(str(tree))
-        except Exception: st.warning('Chunking requires NLTK tokenizer and POS-tagger resources. Try the POS tag experiment or install resources as documented in README.md.')
-    with tabs[7]:
-        st.subheader('Named entity recognition')
-        try:
-            import nltk
-            tagged=nltk.pos_tag(nltk.word_tokenize(text_input)); tree=nltk.ne_chunk(tagged)
-            entities=[]
-            for node in tree:
-                if hasattr(node,'label'): entities.append({'entity':' '.join(w for w,t in node.leaves()),'label':node.label()})
-            if entities: st.dataframe(pd.DataFrame(entities),use_container_width=True,hide_index=True)
-            else: st.info('No named entities identified in this text.')
-        except Exception: st.warning('NER requires optional NLTK tokenizer, POS-tagger and named-entity resources. Install resources as documented in README.md.')
-    with tabs[8]:
-        st.subheader('TF-IDF text similarity recognizer')
-        other=st.text_area('Compare with another description',value='A young investigator searches for clues in a secret archive and uncovers a mystery about courage and friendship.',height=100)
-        score,level=compare_texts(text_input,other); st.metric('Cosine similarity',f'{score*100:.1f}%'); st.progress(min(max(score,0),1)); st.write(f'**Similarity level:** {level}')
-        st.caption('TF-IDF highlights overlapping informative terms; similarity is not a measure of literary quality.')
-    with tabs[9]:
-        st.subheader('Text exploratory analysis & word frequencies')
-        cleaned=re.sub(r'[^a-zA-Z\s]','',str(text_input).lower()); stop={'a','an','the','and','or','is','are','of','to','in','for','on','with','it','this','that'}
-        freq=Counter(w for w in cleaned.split() if w not in stop)
-        if freq:
-            freq_df=pd.DataFrame(freq.most_common(15),columns=['Word','Frequency'])
-            st.bar_chart(freq_df.set_index('Word')); st.dataframe(freq_df,use_container_width=True,hide_index=True)
-        else: st.info('Enter a longer text to see word frequencies.')
-        st.caption('The chart is a frequency view; it is not a generated word-cloud image.')
+    render_text_insight_tools(text_input)
 
 elif page == 'About BookWise':
     st.markdown('<div class="section-title">About BookWise</div><div class="muted">A thoughtful book discovery experience with an integrated reading insights studio.</div>',unsafe_allow_html=True)
@@ -444,7 +566,7 @@ elif page == 'About BookWise':
     with c1:
         st.subheader('Problem statement'); st.write('Readers face difficulty finding books matching their interests across large catalogs. BookWise provides a simple discovery interface that searches book metadata and ranks textually relevant titles.')
         st.subheader('Core features')
-        for x in ['Search by topic, mood, title, author, or description','Genre and minimum-rating filters','TF-IDF / cosine-similarity recommendations','Save books to a personal shelf and export CSV','Interactive reading insights with ten text-analysis tools']: st.markdown('✓ '+x)
+        for x in ['Search by topic, mood, title, author, or description','Genre and minimum-rating filters','TF-IDF / cosine-similarity recommendations','Save books to a personal shelf and export CSV','Book-by-book text insights, including one complete Project Gutenberg text','Interactive reading insights with ten text-analysis tools']: st.markdown('✓ '+x)
     with c2:
         st.subheader('Technology stack')
         st.markdown('- **Python** — application logic\n- **Streamlit** — interactive web UI\n- **scikit-learn** — TF-IDF and cosine similarity\n- **NLTK** — optional POS tagging, chunking, and NER\n- **Pandas** — book catalogue and tables')
